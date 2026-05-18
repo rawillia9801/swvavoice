@@ -21,6 +21,7 @@ type DialpadProps = {
   value: string;
   onChange: (value: string) => void;
   onCall: () => void;
+  onServerTestCall: () => void;
   calling: boolean;
   message?: string | null;
 };
@@ -29,7 +30,14 @@ function cleanDialString(value: string) {
   return value.replace(/[^\d+*#]/g, "");
 }
 
-export function Dialpad({ value, onChange, onCall, calling, message }: DialpadProps) {
+export function Dialpad({
+  value,
+  onChange,
+  onCall,
+  onServerTestCall,
+  calling,
+  message,
+}: DialpadProps) {
   const append = (digit: string) => onChange(cleanDialString(`${value}${digit}`));
 
   return (
@@ -88,6 +96,20 @@ export function Dialpad({ value, onChange, onCall, calling, message }: DialpadPr
           {calling ? "Calling..." : "Call"}
         </button>
       </div>
+
+      <button
+        type="button"
+        onClick={onServerTestCall}
+        disabled={calling || !value.trim()}
+        className="mt-3 h-10 w-full rounded-md border border-violet-200 bg-violet-50 text-sm font-semibold text-violet-800 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Ring phone with Twilio REST test
+      </button>
+
+      <p className="mt-2 text-xs leading-5 text-slate-500">
+        Call uses the browser Voice SDK. REST test uses Twilio&apos;s server API to ring the
+        number directly.
+      </p>
 
       {message ? (
         <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">{message}</p>

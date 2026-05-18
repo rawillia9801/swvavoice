@@ -9,6 +9,7 @@ type DialpadModalProps = {
   onChange: (value: string) => void;
   onClose: () => void;
   onCall: () => void;
+  onServerTestCall: () => void;
   calling: boolean;
   message?: string | null;
 };
@@ -19,6 +20,7 @@ export function DialpadModal({
   onChange,
   onClose,
   onCall,
+  onServerTestCall,
   calling,
   message,
 }: DialpadModalProps) {
@@ -43,7 +45,14 @@ export function DialpadModal({
             <X className="size-5" aria-hidden="true" />
           </button>
         </div>
-        <Dialpad value={value} onChange={onChange} onCall={onCall} calling={calling} message={message} />
+        <Dialpad
+          value={value}
+          onChange={onChange}
+          onCall={onCall}
+          onServerTestCall={onServerTestCall}
+          calling={calling}
+          message={message}
+        />
       </section>
     </div>
   );

@@ -68,7 +68,6 @@ export function CallsTable({
         <div className="mb-3 flex items-center gap-3">
           <button
             type="button"
-            onClick={onToggleFilters}
             className="inline-flex h-10 items-center gap-3 rounded-md border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 shadow-sm"
           >
             Date Range
@@ -76,6 +75,7 @@ export function CallsTable({
           </button>
           <button
             type="button"
+            onClick={onToggleFilters}
             className="inline-flex h-10 items-center gap-3 rounded-md border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 shadow-sm"
           >
             <Filter className="size-4" aria-hidden="true" />

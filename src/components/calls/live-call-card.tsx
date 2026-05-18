@@ -53,6 +53,14 @@ export function LiveCallCard({
           </div>
         )}
 
+        <button
+          type="button"
+          onClick={onOpenKeypad}
+          className="mt-4 h-10 w-full rounded-md border border-violet-200 bg-violet-50 text-sm font-semibold text-violet-800 transition hover:bg-violet-100"
+        >
+          Open Dialpad / Test Call
+        </button>
+
         <div className="mt-5 grid grid-cols-4 gap-3">
           {[
             { label: "Mute", icon: Mic, onClick: onMute, needsCall: true },

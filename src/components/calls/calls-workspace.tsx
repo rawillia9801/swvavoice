@@ -80,6 +80,37 @@ export function CallsWorkspace({
     setDialMessage("Outbound call attempted through Twilio Voice.");
   };
 
+  const callFromServer = async () => {
+    setDialMessage(null);
+
+    try {
+      const response = await fetch("/api/twilio/calls/test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ to: dialNumber }),
+      });
+      const payload = (await response.json()) as {
+        ok?: boolean;
+        callSid?: string;
+        status?: string;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.ok) {
+        setDialMessage(payload.error || "Twilio REST test call failed.");
+        return;
+      }
+
+      setDialMessage(
+        `Twilio REST test call created. Status: ${payload.status || "queued"}. SID: ${payload.callSid}`,
+      );
+    } catch (error) {
+      setDialMessage(error instanceof Error ? error.message : "Twilio REST test call failed.");
+    }
+  };
+
   const showNotConnected = (message: string) => {
     setNotice(message);
   };
@@ -154,7 +185,7 @@ export function CallsWorkspace({
             onHold={voice.toggleHold}
             onKeypad={() => setDialpadOpen(true)}
             onTransfer={() => showNotConnected("Transfer is not connected yet.")}
-            onAddCall={() => showNotConnected("Add call is not connected yet.")}
+            onAddCall={() => setDialpadOpen(true)}
             onEndCall={voice.endCall}
           />
         </div>
@@ -166,6 +197,7 @@ export function CallsWorkspace({
         onChange={setDialNumber}
         onClose={() => setDialpadOpen(false)}
         onCall={callFromDialpad}
+        onServerTestCall={callFromServer}
         calling={["dialing", "ringing"].includes(voice.diagnostics.callState)}
         message={dialMessage || voice.diagnostics.lastError}
       />
