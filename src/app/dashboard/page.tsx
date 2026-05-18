@@ -12,6 +12,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { TopHeader } from "@/components/layout/top-header";
 import { MessageTemplates } from "@/components/messages/message-templates";
 import { VoicemailInbox } from "@/components/voicemail/voicemail-inbox";
+import { requireAppSession } from "@/lib/auth";
 import {
   activeCaller,
   callNotes,
@@ -26,7 +27,9 @@ import {
   zohoLeadSnapshot,
 } from "@/lib/dashboard-data";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  await requireAppSession();
+
   return (
     <main className="min-h-screen bg-[#f7f4ef] text-stone-900">
       <div className="flex min-h-screen">

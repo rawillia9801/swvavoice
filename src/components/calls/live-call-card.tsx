@@ -22,6 +22,9 @@ export function LiveCallCard({
   onEnd,
 }: LiveCallCardProps) {
   const hasActiveCall = Boolean(liveCall || diagnostics?.activeCallPresent);
+  const liveCallTitle =
+    liveCall?.callerName || (liveCall?.phone ? "Active Twilio call" : "Outbound test call");
+  const liveCallDetail = liveCall?.phone || activeNumber || "Twilio Voice call in progress";
 
   return (
     <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -35,12 +38,10 @@ export function LiveCallCard({
       <div className="p-4">
         {hasActiveCall ? (
           <div className="rounded-md border border-green-100 bg-green-50 p-4">
-            <h3 className="font-semibold text-slate-950">Outbound test call</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              {activeNumber || "Twilio Voice call in progress"}
-            </p>
+            <h3 className="font-semibold text-slate-950">{liveCallTitle}</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{liveCallDetail}</p>
             <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-green-700">
-              {diagnostics?.callState || "active"}
+              {diagnostics?.activeCallPresent ? diagnostics.callState : "active in Twilio"}
             </p>
           </div>
         ) : (

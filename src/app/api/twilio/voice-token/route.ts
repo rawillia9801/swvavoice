@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import twilio from "twilio";
+import { hasAppSession } from "@/lib/auth";
 import {
   getTwilioVoiceConfigStatus,
   getTwilioVoiceIdentity,
@@ -8,6 +9,16 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  if (!(await hasAppSession())) {
+    return NextResponse.json(
+      {
+        configured: false,
+        error: "Unauthorized.",
+      },
+      { status: 401 },
+    );
+  }
+
   const status = getTwilioVoiceConfigStatus();
 
   if (!status.configured) {
