@@ -7,7 +7,7 @@ create table if not exists public.contacts (
   phone_type text not null default 'Mobile',
   email text,
   contact_group text not null default 'Customer'
-    check (contact_group in ('Customer', 'Lead', 'Supplier')),
+    constraint contacts_contact_group_check check (contact_group in ('Customer', 'Lead', 'Supplier')),
   tags text[] not null default '{}',
   favorite boolean not null default false,
   location text,
@@ -32,9 +32,9 @@ create table if not exists public.conversations (
   contact_notes text,
   contact_tags text[] not null default '{}',
   channel text not null default 'sms'
-    check (channel in ('sms', 'whatsapp', 'chat', 'email', 'unknown')),
+    constraint conversations_channel_check check (channel in ('sms', 'whatsapp', 'chat', 'email', 'unknown')),
   status text not null default 'open'
-    check (status in ('open', 'unread', 'resolved', 'archived')),
+    constraint conversations_status_check check (status in ('open', 'unread', 'resolved', 'archived')),
   unread_count integer not null default 0,
   last_message_preview text,
   last_message_at timestamptz,
