@@ -5,6 +5,7 @@ create table if not exists public.contacts (
 );
 
 alter table public.contacts add column if not exists name text;
+alter table public.contacts add column if not exists display_name text;
 alter table public.contacts add column if not exists phone text;
 alter table public.contacts add column if not exists phone_type text default 'Mobile';
 alter table public.contacts add column if not exists email text;
@@ -17,6 +18,7 @@ alter table public.contacts add column if not exists created_at timestamptz defa
 alter table public.contacts add column if not exists updated_at timestamptz default now();
 
 update public.contacts set name = '' where name is null;
+update public.contacts set display_name = name where display_name is null;
 update public.contacts set phone = '' where phone is null;
 update public.contacts set phone_type = 'Mobile' where phone_type is null;
 update public.contacts set contact_group = 'Customer' where contact_group is null;
@@ -26,6 +28,7 @@ update public.contacts set created_at = now() where created_at is null;
 update public.contacts set updated_at = now() where updated_at is null;
 
 alter table public.contacts alter column name set not null;
+alter table public.contacts alter column display_name set not null;
 alter table public.contacts alter column phone set not null;
 alter table public.contacts alter column phone_type set not null;
 alter table public.contacts alter column phone_type set default 'Mobile';

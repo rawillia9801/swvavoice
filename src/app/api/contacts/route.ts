@@ -9,6 +9,7 @@ function contactToRow(contact: Contact) {
   return {
     id: contact.id,
     name: contact.name,
+    display_name: contact.name,
     phone: contact.phone,
     phone_type: contact.phoneType,
     email: contact.email || null,
