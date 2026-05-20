@@ -181,6 +181,26 @@ $$;
 create index if not exists conversation_messages_conversation_id_idx
   on public.conversation_messages (conversation_id, sent_at);
 
+create table if not exists public.call_notes (
+  id uuid primary key default gen_random_uuid()
+);
+
+alter table public.call_notes add column if not exists body text;
+alter table public.call_notes add column if not exists call_id text;
+alter table public.call_notes add column if not exists phone text;
+alter table public.call_notes add column if not exists created_at timestamptz default now();
+
+update public.call_notes set body = '' where body is null;
+update public.call_notes set created_at = now() where created_at is null;
+
+alter table public.call_notes alter column body set not null;
+alter table public.call_notes alter column created_at set not null;
+alter table public.call_notes alter column created_at set default now();
+
+create index if not exists call_notes_call_id_idx on public.call_notes (call_id);
+create index if not exists call_notes_phone_idx on public.call_notes (phone);
+create index if not exists call_notes_created_at_idx on public.call_notes (created_at desc);
+
 create or replace function public.set_updated_at()
 returns trigger as $$
 begin

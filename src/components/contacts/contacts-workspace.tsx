@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useMemo, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
 import {
   CalendarClock,
   ChevronDown,
@@ -32,6 +32,13 @@ type ContactFormProps = {
   contact?: Contact;
   onClose: () => void;
   onSave: (contact: Contact) => void | Promise<void>;
+  saving?: boolean;
+};
+
+type ContactNoteModalProps = {
+  contact: Contact;
+  onClose: () => void;
+  onSave: (note: string) => void | Promise<void>;
   saving?: boolean;
 };
 
@@ -170,6 +177,48 @@ function ContactForm({ mode, contact, onClose, onSave, saving = false }: Contact
   );
 }
 
+function ContactNoteModal({ contact, onClose, onSave, saving = false }: ContactNoteModalProps) {
+  const [note, setNote] = useState("");
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSave(note);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4">
+      <form onSubmit={submit} className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-950">Add Note</h2>
+          <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-full hover:bg-slate-100">
+            <X className="size-5" aria-hidden="true" />
+            <span className="sr-only">Close</span>
+          </button>
+        </div>
+        <p className="mt-1 text-sm text-slate-600">{contact.name}</p>
+        <label className="mt-5 block space-y-1">
+          <span className="text-sm font-semibold text-slate-700">Note</span>
+          <textarea
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            required
+            className="min-h-32 w-full rounded-md border border-slate-200 p-3"
+            placeholder="Enter contact note"
+          />
+        </label>
+        <div className="mt-5 flex justify-end gap-3">
+          <button type="button" onClick={onClose} disabled={saving} className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold disabled:opacity-50">
+            Cancel
+          </button>
+          <button type="submit" disabled={saving || !note.trim()} className="rounded-md bg-violet-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
+            {saving ? "Saving..." : "Save Note"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
   const [contacts, setContacts] = useState(initialContacts);
   const [selectedId, setSelectedId] = useState(initialContacts[0]?.id || "");
@@ -179,12 +228,14 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
   const [tagFilter, setTagFilter] = useState("All Tags");
   const [filterOpen, setFilterOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"add" | "edit" | null>(null);
+  const [noteContactId, setNoteContactId] = useState<string | null>(null);
   const [quickNotice, setQuickNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [actionMenuContactId, setActionMenuContactId] = useState<string | null>(null);
 
   const selected = contacts.find((contact) => contact.id === selectedId) || contacts[0];
+  const noteContact = contacts.find((contact) => contact.id === noteContactId) || null;
   const tagOptions = useMemo(
     () => ["All Tags", ...Array.from(new Set(contacts.flatMap((contact) => contact.tags))).sort()],
     [contacts],
@@ -274,6 +325,51 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
     setModalMode("add");
   };
 
+  useEffect(() => {
+    let active = true;
+
+    const refreshContacts = async () => {
+      setLoadingContacts(true);
+      try {
+        const response = await fetch("/api/contacts", { cache: "no-store" });
+        const payload = (await response.json().catch(() => ({}))) as {
+          contacts?: Contact[];
+          error?: string;
+        };
+
+        if (!response.ok) {
+          throw new Error(payload.error || "Contacts could not be loaded.");
+        }
+
+        if (!active) {
+          return;
+        }
+
+        const nextContacts = payload.contacts || [];
+        setContacts(nextContacts);
+        setSelectedId((current) =>
+          current && nextContacts.some((contact) => contact.id === current)
+            ? current
+            : nextContacts[0]?.id || "",
+        );
+      } catch (error) {
+        if (active) {
+          setQuickNotice(error instanceof Error ? error.message : "Contacts could not be loaded.");
+        }
+      } finally {
+        if (active) {
+          setLoadingContacts(false);
+        }
+      }
+    };
+
+    void refreshContacts();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const saveContact = async (contact: Contact) => {
     setSaving(true);
     setQuickNotice(null);
@@ -297,6 +393,61 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
       setQuickNotice(error instanceof Error ? error.message : "Contact could not be saved.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveContactNote = async (contact: Contact, note: string) => {
+    const body = note.trim();
+    if (!body) {
+      return;
+    }
+
+    const timestamp = new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date());
+    const nextNotes = [contact.notes, `${timestamp}: ${body}`].filter(Boolean).join("\n");
+
+    await saveContact({
+      ...contact,
+      notes: nextNotes,
+      lastInteraction: timestamp,
+    });
+    setNoteContactId(null);
+    setQuickNotice("Contact note saved to Supabase.");
+  };
+
+  const handleContactAction = (contact: Contact, label: string) => {
+    setSelectedId(contact.id);
+
+    if (label === "Call Contact") {
+      if (contact.phone) {
+        window.open(`tel:${contact.phone}`, "_self");
+      } else {
+        setQuickNotice("This contact does not have a phone number.");
+      }
+      return;
+    }
+
+    if (label === "Send Message") {
+      window.open(`/messages?contactId=${encodeURIComponent(contact.id)}`, "_self");
+      return;
+    }
+
+    if (label === "Send Email") {
+      if (contact.email) {
+        window.open(`mailto:${contact.email}`, "_self");
+      } else {
+        setQuickNotice("This contact does not have an email address.");
+      }
+      return;
+    }
+
+    if (label === "Add Note") {
+      setNoteContactId(contact.id);
     }
   };
 
@@ -487,7 +638,7 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
-                                setQuickNotice("Calling from contact actions is not connected yet.");
+                                handleContactAction(contact, "Call Contact");
                                 setActionMenuContactId(null);
                               }}
                               className="block w-full px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
@@ -498,7 +649,7 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
-                                setQuickNotice("Messaging from contact actions is not connected yet.");
+                                handleContactAction(contact, "Send Message");
                                 setActionMenuContactId(null);
                               }}
                               className="block w-full px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
@@ -510,7 +661,7 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
                               onClick={(event) => {
                                 event.stopPropagation();
                                 if (contact.email) {
-                                  window.location.href = `mailto:${contact.email}`;
+                                  window.open(`mailto:${contact.email}`, "_self");
                                 } else {
                                   setQuickNotice("This contact does not have an email address.");
                                 }
@@ -610,7 +761,7 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
                     <h2 className="text-base font-semibold">Quick Actions</h2>
                     <div className="mt-4 space-y-2">
                       {contactQuickActions.map(({ label, icon: Icon, color }) => (
-                        <button key={label} type="button" disabled={!selected} onClick={() => setQuickNotice(`${label} is ready for future Twilio/message/email integration.`)} className="flex h-10 w-full items-center gap-3 rounded-md border border-slate-200 px-3 text-sm font-semibold shadow-sm disabled:cursor-not-allowed disabled:opacity-50">
+                        <button key={label} type="button" disabled={!selected} onClick={() => selected ? handleContactAction(selected, label) : undefined} className="flex h-10 w-full items-center gap-3 rounded-md border border-slate-200 px-3 text-sm font-semibold shadow-sm disabled:cursor-not-allowed disabled:opacity-50">
                           <Icon className={`size-4 ${color}`} aria-hidden="true" />
                           {label}
                         </button>
@@ -629,6 +780,14 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
           contact={modalMode === "edit" ? selected : undefined}
           onClose={() => setModalMode(null)}
           onSave={saveContact}
+          saving={saving}
+        />
+      ) : null}
+      {noteContact ? (
+        <ContactNoteModal
+          contact={noteContact}
+          onClose={() => setNoteContactId(null)}
+          onSave={(note) => saveContactNote(noteContact, note)}
           saving={saving}
         />
       ) : null}

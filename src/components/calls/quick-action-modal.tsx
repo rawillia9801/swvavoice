@@ -7,7 +7,7 @@ import type { CallsQuickAction } from "@/lib/calls/types";
 type QuickActionModalProps = {
   action: CallsQuickAction | null;
   onClose: () => void;
-  onSaveNote: (note: string) => void;
+  onSaveNote: (note: string) => Promise<void>;
 };
 
 export function QuickActionModal({ action, onClose, onSaveNote }: QuickActionModalProps) {
@@ -20,11 +20,15 @@ export function QuickActionModal({ action, onClose, onSaveNote }: QuickActionMod
 
   const isNote = action.actionType === "add_call_note";
 
-  const submit = () => {
+  const submit = async () => {
     if (isNote && message.trim()) {
-      onSaveNote(message.trim());
-      setFeedback("Note saved locally on this page. Backend note saving is not connected yet.");
-      setMessage("");
+      try {
+        await onSaveNote(message.trim());
+        setFeedback("Note saved to Supabase.");
+        setMessage("");
+      } catch (error) {
+        setFeedback(error instanceof Error ? error.message : "Note could not be saved.");
+      }
       return;
     }
 

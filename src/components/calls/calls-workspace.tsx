@@ -45,7 +45,6 @@ export function CallsWorkspace({
   const [dialNumber, setDialNumber] = useState("");
   const [dialMessage, setDialMessage] = useState<string | null>(null);
   const [quickAction, setQuickAction] = useState<CallsQuickAction | null>(null);
-  const [localNotes, setLocalNotes] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
 
   const filteredCalls = useMemo(() => {
@@ -115,6 +114,24 @@ export function CallsWorkspace({
     setNotice(message);
   };
 
+  const saveCallNote = async (note: string) => {
+    const noteTarget = liveCall || filteredCalls[0] || null;
+    const response = await fetch("/api/call-notes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        body: note,
+        callId: noteTarget?.id || null,
+        phone: noteTarget?.phone || null,
+      }),
+    });
+    const payload = (await response.json().catch(() => ({}))) as { error?: string };
+
+    if (!response.ok) {
+      throw new Error(payload.error || "Note could not be saved.");
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[#f7f8fc] text-slate-950">
       <div className="flex min-h-screen">
@@ -162,18 +179,6 @@ export function CallsWorkspace({
                 />
                 <CallsQuickActionsCard actions={actions} onAction={setQuickAction} />
                 <CallAnalyticsCard analytics={analytics} />
-                {localNotes.length > 0 ? (
-                  <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                    <h2 className="text-base font-semibold text-slate-950">Local Notes</h2>
-                    <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                      {localNotes.map((note, index) => (
-                        <li key={`${note}-${index}`} className="rounded-md bg-slate-50 p-2">
-                          {note}
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ) : null}
               </aside>
             </div>
           </div>
@@ -204,7 +209,7 @@ export function CallsWorkspace({
       <QuickActionModal
         action={quickAction}
         onClose={() => setQuickAction(null)}
-        onSaveNote={(note) => setLocalNotes((notes) => [note, ...notes])}
+        onSaveNote={saveCallNote}
       />
       {notice ? (
         <div className="fixed bottom-24 right-6 z-50 max-w-sm rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 shadow-lg">
