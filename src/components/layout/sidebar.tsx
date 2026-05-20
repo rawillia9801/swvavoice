@@ -33,12 +33,12 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const isCallsPage = pathname.startsWith("/calls");
+  const usesDarkSidebar = pathname.startsWith("/calls") || pathname.startsWith("/contacts");
 
   return (
     <aside
       className={`hidden w-[318px] shrink-0 px-3 py-4 shadow-[8px_0_30px_rgba(75,63,49,0.04)] backdrop-blur xl:flex xl:flex-col ${
-        isCallsPage
+        usesDarkSidebar
           ? "border-r border-white/10 bg-[#171b39] text-white"
           : "border-r border-[#ebe5dc] bg-[#fbfaf7]/95"
       }`}
@@ -55,12 +55,12 @@ export function Sidebar() {
         <div>
           <p
             className={`max-w-[190px] text-[25px] font-semibold leading-[27px] ${
-              isCallsPage ? "text-white" : "text-[#2a120b]"
+              usesDarkSidebar ? "text-white" : "text-[#2a120b]"
             }`}
           >
             Southwest Virginia Chihuahua
           </p>
-          <p className={`mt-1 text-[14px] ${isCallsPage ? "text-white/80" : "text-[#4f4b47]"}`}>
+          <p className={`mt-1 text-[14px] ${usesDarkSidebar ? "text-white/80" : "text-[#4f4b47]"}`}>
             Smart VOIP & Customer Care
           </p>
         </div>
@@ -77,10 +77,10 @@ export function Sidebar() {
               href={item.href}
               className={`group flex h-[48px] items-center gap-4 rounded-[7px] border px-4 text-[14px] font-medium transition ${
                 active
-                  ? isCallsPage
+                  ? usesDarkSidebar
                     ? "border-white/10 bg-[#6750d8] text-white shadow-sm"
                     : "border-[#a7dad7] bg-[#eefaf8] text-[#00736d] shadow-sm"
-                  : isCallsPage
+                  : usesDarkSidebar
                     ? "border-transparent text-white/82 hover:bg-white/10 hover:text-white"
                     : "border-transparent text-[#222832] hover:bg-white hover:text-stone-950"
               }`}
@@ -95,7 +95,7 @@ export function Sidebar() {
 
       <div
         className={`mt-auto flex min-h-[129px] items-end gap-3 rounded-[8px] px-4 py-3 shadow-sm ${
-          isCallsPage
+          usesDarkSidebar
             ? "border border-white/10 bg-white/8"
             : "border border-[#e8e1d8] bg-white"
         }`}
@@ -108,7 +108,7 @@ export function Sidebar() {
           className="h-[92px] w-[86px] object-cover"
         />
         <div className="flex-1 pb-4">
-          <p className={`text-[12px] leading-[18px] ${isCallsPage ? "text-white/85" : "text-[#5f5a55]"}`}>
+          <p className={`text-[12px] leading-[18px] ${usesDarkSidebar ? "text-white/85" : "text-[#5f5a55]"}`}>
             Our mission is simple: Healthy puppies, happy families, lifelong support.
           </p>
         </div>

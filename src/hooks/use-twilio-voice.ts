@@ -58,6 +58,7 @@ export function useTwilioVoice() {
   const callRef = useRef<Call | null>(null);
 
   const attachCallHandlers = useCallback((call: Call, number?: string) => {
+    let accepted = false;
     callRef.current = call;
     setActiveCallPresent(true);
     setActiveNumber(number || null);
@@ -65,11 +66,17 @@ export function useTwilioVoice() {
     setMuted(false);
 
     call.on("accept", () => {
+      accepted = true;
       setCallState("active");
     });
     call.on("disconnect", () => {
       callRef.current = null;
       setActiveCallPresent(false);
+      if (!accepted) {
+        setLastError(
+          "Browser Voice call ended before the destination rang. This usually means the TwiML App Voice Request URL is missing, unreachable, or not returning valid <Dial><Number> TwiML. Use the REST test button to verify Twilio can ring the number, then check the TwiML App URL.",
+        );
+      }
       setCallState("ended");
       setMuted(false);
       setHeld(false);
