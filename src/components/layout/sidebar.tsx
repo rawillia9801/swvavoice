@@ -33,7 +33,10 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const usesDarkSidebar = pathname.startsWith("/calls") || pathname.startsWith("/contacts");
+  const usesDarkSidebar =
+    pathname.startsWith("/calls") ||
+    pathname.startsWith("/contacts") ||
+    pathname.startsWith("/messages");
 
   return (
     <aside

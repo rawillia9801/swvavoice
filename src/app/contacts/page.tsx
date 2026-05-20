@@ -1,9 +1,11 @@
 import { requireAppSession } from "@/lib/auth";
 import { ContactsWorkspace } from "@/components/contacts/contacts-workspace";
-import { sampleContacts } from "@/lib/contacts/sample-contacts";
+import { getContacts } from "@/lib/contacts/get-contacts";
 
 export default async function ContactsPage() {
   await requireAppSession();
 
-  return <ContactsWorkspace initialContacts={sampleContacts} />;
+  const contacts = await getContacts();
+
+  return <ContactsWorkspace initialContacts={contacts} />;
 }

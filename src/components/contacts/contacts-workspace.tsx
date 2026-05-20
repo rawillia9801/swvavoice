@@ -31,50 +31,11 @@ type ContactFormProps = {
   mode: "add" | "edit";
   contact?: Contact;
   onClose: () => void;
-  onSave: (contact: Contact) => void;
+  onSave: (contact: Contact) => void | Promise<void>;
+  saving?: boolean;
 };
 
 const groupOptions = ["All Groups", "Customer", "Lead", "Supplier"];
-const tagOptions = [
-  "All Tags",
-  "VIP",
-  "Repeat Buyer",
-  "New",
-  "Pickup",
-  "Follow Up",
-  "Breeder",
-];
-
-const statCards = [
-  {
-    label: "Total Contacts",
-    value: "238",
-    caption: "All contacts",
-    icon: User,
-    className: "border-violet-200 bg-violet-50 text-violet-700",
-  },
-  {
-    label: "Customers",
-    value: "142",
-    caption: "Active customers",
-    icon: UserPlus,
-    className: "border-green-200 bg-green-50 text-green-700",
-  },
-  {
-    label: "Favorites",
-    value: "32",
-    caption: "Starred contacts",
-    icon: Star,
-    className: "border-amber-200 bg-amber-50 text-amber-600",
-  },
-  {
-    label: "Added This Month",
-    value: "18",
-    caption: "New contacts",
-    icon: Clock3,
-    className: "border-blue-200 bg-blue-50 text-blue-700",
-  },
-];
 
 const contactQuickActions = [
   { label: "Call Contact", icon: Phone, color: "text-green-700" },
@@ -94,22 +55,22 @@ function initials(name: string) {
 }
 
 function badgeClass(value: string) {
-  if (value === "VIP" || value === "Repeat Buyer" || value === "Breeder") {
-    return "border-amber-200 bg-amber-50 text-amber-700";
-  }
-
   if (value === "Customer") {
     return "border-blue-200 bg-blue-50 text-blue-700";
   }
 
-  if (value === "Lead" || value === "Follow Up" || value === "New") {
+  if (value === "Lead") {
     return "border-green-200 bg-green-50 text-green-700";
+  }
+
+  if (value === "Supplier") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
   }
 
   return "border-sky-200 bg-sky-50 text-sky-700";
 }
 
-function ContactForm({ mode, contact, onClose, onSave }: ContactFormProps) {
+function ContactForm({ mode, contact, onClose, onSave, saving = false }: ContactFormProps) {
   const [name, setName] = useState(contact?.name || "");
   const [phone, setPhone] = useState(contact?.phone || "");
   const [email, setEmail] = useState(contact?.email || "");
@@ -127,7 +88,7 @@ function ContactForm({ mode, contact, onClose, onSave }: ContactFormProps) {
     }).format(new Date());
 
     onSave({
-      id: contact?.id || `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`,
+      id: contact?.id || crypto.randomUUID(),
       name,
       phone,
       phoneType: contact?.phoneType || "Mobile",
@@ -184,7 +145,7 @@ function ContactForm({ mode, contact, onClose, onSave }: ContactFormProps) {
           </label>
           <label className="space-y-1 md:col-span-2">
             <span className="text-sm font-semibold text-slate-700">Tags</span>
-            <input value={tags} onChange={(event) => setTags(event.target.value)} className="h-10 w-full rounded-md border border-slate-200 px-3" placeholder="VIP, Repeat Buyer" />
+            <input value={tags} onChange={(event) => setTags(event.target.value)} className="h-10 w-full rounded-md border border-slate-200 px-3" placeholder="Comma-separated tags" />
           </label>
           <label className="space-y-1 md:col-span-2">
             <span className="text-sm font-semibold text-slate-700">Location</span>
@@ -197,11 +158,11 @@ function ContactForm({ mode, contact, onClose, onSave }: ContactFormProps) {
         </div>
 
         <div className="mt-5 flex justify-end gap-3">
-          <button type="button" onClick={onClose} className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold">
+          <button type="button" onClick={onClose} disabled={saving} className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold disabled:opacity-50">
             Cancel
           </button>
-          <button type="submit" className="rounded-md bg-violet-600 px-4 py-2 text-sm font-semibold text-white">
-            Save
+          <button type="submit" disabled={saving} className="rounded-md bg-violet-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
+            {saving ? "Saving..." : "Save"}
           </button>
         </div>
       </form>
@@ -219,8 +180,50 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"add" | "edit" | null>(null);
   const [quickNotice, setQuickNotice] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const selected = contacts.find((contact) => contact.id === selectedId) || contacts[0];
+  const tagOptions = useMemo(
+    () => ["All Tags", ...Array.from(new Set(contacts.flatMap((contact) => contact.tags))).sort()],
+    [contacts],
+  );
+  const statCards = useMemo(
+    () => [
+      {
+        label: "Total Contacts",
+        value: contacts.length,
+        caption: contacts.length ? "Saved contacts" : "No contacts yet",
+        icon: User,
+        className: "border-violet-200 bg-violet-50 text-violet-700",
+      },
+      {
+        label: "Customers",
+        value: contacts.filter((contact) => contact.group === "Customer").length,
+        caption: "Active customers",
+        icon: UserPlus,
+        className: "border-green-200 bg-green-50 text-green-700",
+      },
+      {
+        label: "Favorites",
+        value: contacts.filter((contact) => contact.favorite).length,
+        caption: "Starred contacts",
+        icon: Star,
+        className: "border-amber-200 bg-amber-50 text-amber-600",
+      },
+      {
+        label: "Added This Month",
+        value: contacts.filter((contact) => {
+          const addedDate = new Date(contact.added);
+          const now = new Date();
+          return addedDate.getMonth() === now.getMonth() && addedDate.getFullYear() === now.getFullYear();
+        }).length,
+        caption: "New contacts",
+        icon: Clock3,
+        className: "border-blue-200 bg-blue-50 text-blue-700",
+      },
+    ],
+    [contacts],
+  );
   const filtered = useMemo(() => {
     const query = contactSearch.trim().toLowerCase();
     return contacts.filter((contact) => {
@@ -236,15 +239,35 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
     });
   }, [contactSearch, contacts, groupFilter, tagFilter]);
 
-  const saveContact = (contact: Contact) => {
-    setContacts((current) => {
-      const exists = current.some((item) => item.id === contact.id);
-      return exists
-        ? current.map((item) => (item.id === contact.id ? contact : item))
-        : [contact, ...current];
-    });
-    setSelectedId(contact.id);
-    setModalMode(null);
+  const saveContact = async (contact: Contact) => {
+    setSaving(true);
+    setQuickNotice(null);
+    try {
+      const response = await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(contact),
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Contact could not be saved.");
+      }
+
+      setContacts((current) => {
+        const exists = current.some((item) => item.id === contact.id);
+        return exists
+          ? current.map((item) => (item.id === contact.id ? contact : item))
+          : [contact, ...current];
+      });
+      setSelectedId(contact.id);
+      setModalMode(null);
+      setQuickNotice("Contact saved to Supabase.");
+    } catch (error) {
+      setQuickNotice(error instanceof Error ? error.message : "Contact could not be saved.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggleFavorite = (id: string) => {
@@ -328,7 +351,7 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
                   <div className="grid grid-cols-[52px_1.35fr_1.25fr_1.5fr_0.8fr_1fr_0.9fr_64px] px-5 py-4 text-xs font-semibold text-slate-500">
                     {["Favorite", "Name", "Phone", "Email", "Group", "Tags", "Added", "Actions"].map((column) => <span key={column}>{column}</span>)}
                   </div>
-                  {filtered.map((contact) => (
+                  {filtered.length ? filtered.map((contact) => (
                     <div
                       key={contact.id}
                       onClick={() => setSelectedId(contact.id)}
@@ -374,9 +397,28 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
                         <MoreHorizontal className="size-4" aria-hidden="true" />
                       </button>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="grid min-h-[260px] place-items-center border-t border-slate-100 px-6 text-center">
+                      <div>
+                        <div className="mx-auto grid size-12 place-items-center rounded-full bg-violet-50 text-violet-700">
+                          <User className="size-6" aria-hidden="true" />
+                        </div>
+                        <h3 className="mt-4 text-base font-semibold">No contacts yet</h3>
+                        <p className="mt-2 max-w-sm text-sm text-slate-600">
+                          Contacts you add or connect from your CRM will appear here.
+                        </p>
+                        <button type="button" onClick={() => setModalMode("add")} className="mt-4 rounded-md bg-violet-600 px-4 py-2 text-sm font-semibold text-white">
+                          Add Contact
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-4 text-sm text-slate-600">
-                    <span>Showing 1 to 6 of 238 contacts</span>
+                    <span>
+                      {filtered.length
+                        ? `Showing 1 to ${filtered.length} of ${contacts.length} contacts`
+                        : "Showing 0 contacts"}
+                    </span>
                     <div className="flex items-center gap-2">
                       {["Previous", "1", "2", "3", "4", "5", "...", "40", "Next"].map((item) => (
                         <button key={item} type="button" className={`rounded-md px-3 py-2 ${item === "1" ? "bg-violet-600 text-white" : "text-slate-700"}`}>{item}</button>
@@ -389,46 +431,55 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
                 </section>
               </section>
 
-              {selected ? (
-                <aside className="space-y-5">
-                  <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-base font-semibold">Contact Details</h2>
-                      <button type="button" onClick={() => setModalMode("edit")} className="rounded-md bg-slate-100 px-3 py-1.5 text-sm font-semibold">Edit</button>
-                    </div>
-                    <div className="mt-5 flex items-center gap-4">
-                      <div className="grid size-16 place-items-center rounded-full bg-violet-100 text-xl font-bold text-violet-700">{initials(selected.name)}</div>
-                      <div>
-                        <h3 className="text-xl font-bold">{selected.name}</h3>
-                        <div className="mt-2 flex gap-2">
-                          {["VIP", selected.group].filter((tag) => selected.tags.includes(tag) || tag === selected.group).map((tag) => (
-                            <span key={tag} className={`rounded-full border px-2 py-1 text-xs font-semibold ${badgeClass(tag)}`}>{tag}</span>
-                          ))}
+              <aside className="space-y-5">
+                <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-semibold">Contact Details</h2>
+                    <button type="button" onClick={() => selected ? setModalMode("edit") : setModalMode("add")} className="rounded-md bg-slate-100 px-3 py-1.5 text-sm font-semibold">
+                      {selected ? "Edit" : "Add"}
+                    </button>
+                  </div>
+                  {selected ? (
+                    <>
+                      <div className="mt-5 flex items-center gap-4">
+                        <div className="grid size-16 place-items-center rounded-full bg-violet-100 text-xl font-bold text-violet-700">{initials(selected.name)}</div>
+                        <div>
+                          <h3 className="text-xl font-bold">{selected.name}</h3>
+                          <div className="mt-2 flex gap-2">
+                            {[...selected.tags, selected.group].map((tag) => (
+                              <span key={tag} className={`rounded-full border px-2 py-1 text-xs font-semibold ${badgeClass(tag)}`}>{tag}</span>
+                            ))}
+                          </div>
                         </div>
                       </div>
+                      <dl className="mt-5 space-y-4 text-sm">
+                        <div className="flex gap-3"><Phone className="size-5 text-green-600" /><div><dt>{selected.phone}</dt><dd className="text-slate-500">{selected.phoneType}</dd></div></div>
+                        {selected.email ? <div className="flex gap-3"><Mail className="size-5 text-green-600" /><dd>{selected.email}</dd></div> : null}
+                        {selected.location ? <div className="flex gap-3"><MapPin className="size-5 text-green-600" /><dd>{selected.location}</dd></div> : null}
+                        <div className="flex gap-3"><CalendarClock className="size-5 text-green-600" /><dd>Added: {selected.added}</dd></div>
+                        <div className="flex gap-3"><Clock3 className="size-5 text-green-600" /><dd>{selected.lastInteraction}</dd></div>
+                        {selected.notes ? <div className="flex gap-3"><StickyNote className="size-5 text-green-600" /><dd>{selected.notes}</dd></div> : null}
+                      </dl>
+                    </>
+                  ) : (
+                    <div className="mt-8 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
+                      <h3 className="font-semibold text-slate-950">No contact selected</h3>
+                      <p className="mt-2">Add a contact or connect a CRM source to view contact details here.</p>
                     </div>
-                    <dl className="mt-5 space-y-4 text-sm">
-                      <div className="flex gap-3"><Phone className="size-5 text-green-600" /><div><dt>{selected.phone}</dt><dd className="text-slate-500">{selected.phoneType}</dd></div></div>
-                      <div className="flex gap-3"><Mail className="size-5 text-green-600" /><dd>{selected.email}</dd></div>
-                      <div className="flex gap-3"><MapPin className="size-5 text-green-600" /><dd>{selected.location}</dd></div>
-                      <div className="flex gap-3"><CalendarClock className="size-5 text-green-600" /><dd>Added: {selected.added}</dd></div>
-                      <div className="flex gap-3"><Clock3 className="size-5 text-green-600" /><dd>{selected.lastInteraction}</dd></div>
-                      <div className="flex gap-3"><StickyNote className="size-5 text-green-600" /><dd>{selected.notes}</dd></div>
-                    </dl>
-                  </section>
+                  )}
+                </section>
                   <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                     <h2 className="text-base font-semibold">Quick Actions</h2>
                     <div className="mt-4 space-y-2">
                       {contactQuickActions.map(({ label, icon: Icon, color }) => (
-                        <button key={label} type="button" onClick={() => setQuickNotice(`${label} is ready for future Twilio/message/email integration.`)} className="flex h-10 w-full items-center gap-3 rounded-md border border-slate-200 px-3 text-sm font-semibold shadow-sm">
+                        <button key={label} type="button" disabled={!selected} onClick={() => setQuickNotice(`${label} is ready for future Twilio/message/email integration.`)} className="flex h-10 w-full items-center gap-3 rounded-md border border-slate-200 px-3 text-sm font-semibold shadow-sm disabled:cursor-not-allowed disabled:opacity-50">
                           <Icon className={`size-4 ${color}`} aria-hidden="true" />
                           {label}
                         </button>
                       ))}
                     </div>
                   </section>
-                </aside>
-              ) : null}
+              </aside>
             </div>
           </div>
           <CallControlBar />
@@ -440,6 +491,7 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
           contact={modalMode === "edit" ? selected : undefined}
           onClose={() => setModalMode(null)}
           onSave={saveContact}
+          saving={saving}
         />
       ) : null}
       {quickNotice ? (
