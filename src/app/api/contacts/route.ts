@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasAppSession } from "@/lib/auth";
+import { getContacts } from "@/lib/contacts/get-contacts";
 import type { Contact } from "@/lib/contacts/types";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -19,6 +20,15 @@ function contactToRow(contact: Contact) {
     location: contact.location || null,
     notes: contact.notes || null,
   };
+}
+
+export async function GET() {
+  if (!(await hasAppSession())) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const contacts = await getContacts();
+  return NextResponse.json({ contacts });
 }
 
 export async function POST(request: Request) {
