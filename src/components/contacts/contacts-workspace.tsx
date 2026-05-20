@@ -233,6 +233,7 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
   const [saving, setSaving] = useState(false);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [actionMenuContactId, setActionMenuContactId] = useState<string | null>(null);
+  const [deletingContactId, setDeletingContactId] = useState<string | null>(null);
 
   const selected = contacts.find((contact) => contact.id === selectedId) || contacts[0];
   const noteContact = contacts.find((contact) => contact.id === noteContactId) || null;
@@ -418,6 +419,36 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
     });
     setNoteContactId(null);
     setQuickNotice("Contact note saved to Supabase.");
+  };
+
+  const deleteContact = async (contact: Contact) => {
+    const confirmed = window.confirm(`Delete ${contact.name} from contacts? This cannot be undone.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingContactId(contact.id);
+    setQuickNotice(null);
+    setActionMenuContactId(null);
+
+    try {
+      const response = await fetch(`/api/contacts?id=${encodeURIComponent(contact.id)}`, {
+        method: "DELETE",
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Contact could not be deleted.");
+      }
+
+      setSelectedId((current) => (current === contact.id ? "" : current));
+      await loadContacts();
+      setQuickNotice("Contact deleted from Supabase.");
+    } catch (error) {
+      setQuickNotice(error instanceof Error ? error.message : "Contact could not be deleted.");
+    } finally {
+      setDeletingContactId(null);
+    }
   };
 
   const handleContactAction = (contact: Contact, label: string) => {
@@ -681,6 +712,18 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
                               className="block w-full px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
                             >
                               Copy Phone
+                            </button>
+                            <span className="my-1 block border-t border-slate-100" />
+                            <button
+                              type="button"
+                              disabled={deletingContactId === contact.id}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void deleteContact(contact);
+                              }}
+                              className="block w-full px-3 py-2 text-left text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {deletingContactId === contact.id ? "Deleting..." : "Delete Contact"}
                             </button>
                           </span>
                         ) : null}

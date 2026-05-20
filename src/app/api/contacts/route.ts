@@ -63,3 +63,42 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true });
 }
+
+export async function DELETE(request: Request) {
+  if (!(await hasAppSession())) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id")?.trim();
+
+  if (!id) {
+    return NextResponse.json({ error: "Contact id is required." }, { status: 400 });
+  }
+
+  const supabase = getSupabaseServerClient();
+  if (!supabase) {
+    const { supabaseUrl, serviceRoleKey } = getSupabaseConfig();
+    return NextResponse.json(
+      {
+        error: `Supabase is not configured on this running server. URL loaded: ${supabaseUrl ? "yes" : "no"}. Service key loaded: ${serviceRoleKey ? "yes" : "no"}.`,
+      },
+      { status: 503 },
+    );
+  }
+
+  const { error } = await supabase.from(contactsTable).delete().eq("id", id);
+
+  if (error) {
+    const { supabaseUrl, serviceRoleKey } = getSupabaseConfig();
+    const safeHost = supabaseUrl ? new URL(supabaseUrl).host : "missing-url";
+    return NextResponse.json(
+      {
+        error: `${error.message} (Supabase host: ${safeHost}; key loaded: ${serviceRoleKey ? "yes" : "no"})`,
+      },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({ ok: true });
+}
