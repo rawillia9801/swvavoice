@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { hasAppSession } from "@/lib/auth";
 import { getContacts } from "@/lib/contacts/get-contacts";
 import type { Contact } from "@/lib/contacts/types";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseConfig, getSupabaseServerClient } from "@/lib/supabase/server";
 
 const contactsTable = process.env.SUPABASE_CONTACTS_TABLE || "contacts";
 
@@ -38,10 +38,10 @@ export async function POST(request: Request) {
 
   const supabase = getSupabaseServerClient();
   if (!supabase) {
+    const { supabaseUrl, serviceRoleKey } = getSupabaseConfig();
     return NextResponse.json(
       {
-        error:
-          "Supabase is not configured. Set SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY. NEXT_PUBLIC_SUPABASE_ANON_KEY is supported only when your Supabase policies allow this server route to write contacts.",
+        error: `Supabase is not configured on this running server. URL loaded: ${supabaseUrl ? "yes" : "no"}. Service key loaded: ${serviceRoleKey ? "yes" : "no"}.`,
       },
       { status: 503 },
     );
@@ -51,7 +51,14 @@ export async function POST(request: Request) {
   const { error } = await supabase.from(contactsTable).upsert(contactToRow(contact));
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const { supabaseUrl, serviceRoleKey } = getSupabaseConfig();
+    const safeHost = supabaseUrl ? new URL(supabaseUrl).host : "missing-url";
+    return NextResponse.json(
+      {
+        error: `${error.message} (Supabase host: ${safeHost}; key loaded: ${serviceRoleKey ? "yes" : "no"})`,
+      },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({ ok: true });
