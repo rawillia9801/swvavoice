@@ -181,6 +181,7 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
   const [modalMode, setModalMode] = useState<"add" | "edit" | null>(null);
   const [quickNotice, setQuickNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [actionMenuContactId, setActionMenuContactId] = useState<string | null>(null);
 
   const selected = contacts.find((contact) => contact.id === selectedId) || contacts[0];
   const tagOptions = useMemo(
@@ -270,6 +271,15 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
     }
   };
 
+  const copyPhone = async (phone: string) => {
+    try {
+      await navigator.clipboard.writeText(phone);
+      setQuickNotice("Phone number copied.");
+    } catch {
+      setQuickNotice("Could not copy the phone number.");
+    }
+  };
+
   const toggleFavorite = (id: string) => {
     setContacts((current) =>
       current.map((contact) =>
@@ -347,7 +357,7 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
                   </div>
                 ) : null}
 
-                <section className="mt-5 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                <section className="mt-5 overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm">
                   <div className="grid grid-cols-[52px_1.35fr_1.25fr_1.5fr_0.8fr_1fr_0.9fr_64px] px-5 py-4 text-xs font-semibold text-slate-500">
                     {["Favorite", "Name", "Phone", "Email", "Group", "Tags", "Added", "Actions"].map((column) => <span key={column}>{column}</span>)}
                   </div>
@@ -385,17 +395,108 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
                         {contact.tags.map((tag) => <span key={tag} className={`rounded-full border px-2 py-1 text-xs font-semibold ${badgeClass(tag)}`}>{tag}</span>)}
                       </span>
                       <span className="text-slate-600">{contact.added}</span>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setQuickNotice("Contact row actions are ready for future CRM integration.");
-                        }}
-                        className="grid size-9 place-items-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-50"
-                        aria-label={`Open actions for ${contact.name}`}
-                      >
-                        <MoreHorizontal className="size-4" aria-hidden="true" />
-                      </button>
+                      <span className="relative">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSelectedId(contact.id);
+                            setActionMenuContactId((current) => current === contact.id ? null : contact.id);
+                          }}
+                          className="grid size-9 place-items-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-50"
+                          aria-label={`Open actions for ${contact.name}`}
+                          aria-expanded={actionMenuContactId === contact.id}
+                        >
+                          <MoreHorizontal className="size-4" aria-hidden="true" />
+                        </button>
+                        {actionMenuContactId === contact.id ? (
+                          <span className="absolute right-0 top-10 z-40 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-xl">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setSelectedId(contact.id);
+                                setActionMenuContactId(null);
+                              }}
+                              className="block w-full px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              View Details
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setSelectedId(contact.id);
+                                setModalMode("edit");
+                                setActionMenuContactId(null);
+                              }}
+                              className="block w-full px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              Edit Contact
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void saveContact(contact);
+                                setActionMenuContactId(null);
+                              }}
+                              className="block w-full px-3 py-2 text-left text-sm font-semibold text-violet-700 hover:bg-violet-50"
+                            >
+                              Add to Contacts
+                            </button>
+                            <span className="my-1 block border-t border-slate-100" />
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setQuickNotice("Calling from contact actions is not connected yet.");
+                                setActionMenuContactId(null);
+                              }}
+                              className="block w-full px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              Call Contact
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setQuickNotice("Messaging from contact actions is not connected yet.");
+                                setActionMenuContactId(null);
+                              }}
+                              className="block w-full px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              Send Message
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (contact.email) {
+                                  window.location.href = `mailto:${contact.email}`;
+                                } else {
+                                  setQuickNotice("This contact does not have an email address.");
+                                }
+                                setActionMenuContactId(null);
+                              }}
+                              className="block w-full px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              Send Email
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void copyPhone(contact.phone);
+                                setActionMenuContactId(null);
+                              }}
+                              className="block w-full px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              Copy Phone
+                            </button>
+                          </span>
+                        ) : null}
+                      </span>
                     </div>
                   )) : (
                     <div className="grid min-h-[260px] place-items-center border-t border-slate-100 px-6 text-center">
@@ -408,7 +509,7 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
                           Contacts you add or connect from your CRM will appear here.
                         </p>
                         <button type="button" onClick={() => setModalMode("add")} className="mt-4 rounded-md bg-violet-600 px-4 py-2 text-sm font-semibold text-white">
-                          Add Contact
+                          Add to Contacts
                         </button>
                       </div>
                     </div>
