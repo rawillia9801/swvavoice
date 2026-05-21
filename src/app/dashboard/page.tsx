@@ -13,22 +13,34 @@ import { TopHeader } from "@/components/layout/top-header";
 import { MessageTemplates } from "@/components/messages/message-templates";
 import { VoicemailInbox } from "@/components/voicemail/voicemail-inbox";
 import { requireAppSession } from "@/lib/auth";
+import { getCalls } from "@/lib/calls/get-calls";
+import { getLiveCall } from "@/lib/calls/get-live-call";
+import { getContacts } from "@/lib/contacts/get-contacts";
 import {
-  activeCaller,
   callNotes,
-  callTimeline,
   messageTemplates,
   publicCallerMenu,
   quickActions,
   recognizedCallerMenu,
-  recentCalls,
   spokenMessage,
   voicemails,
-  zohoLeadSnapshot,
 } from "@/lib/dashboard-data";
+import {
+  getDashboardActiveCall,
+  mapActiveCallToCaller,
+  mapActiveCallToSnapshot,
+  mapActiveCallToTimeline,
+  mapCallsToRecentCalls,
+} from "@/lib/dashboard-live-data";
 
 export default async function DashboardPage() {
   await requireAppSession();
+  const [calls, liveCall, contacts] = await Promise.all([getCalls(), getLiveCall(), getContacts()]);
+  const activeCall = getDashboardActiveCall(liveCall, calls);
+  const activeCaller = mapActiveCallToCaller(activeCall, contacts);
+  const recentCalls = mapCallsToRecentCalls(calls);
+  const callTimeline = mapActiveCallToTimeline(activeCall, contacts);
+  const zohoLeadSnapshot = mapActiveCallToSnapshot(activeCall, contacts);
 
   return (
     <main className="min-h-screen bg-[#f7f4ef] text-stone-900">
