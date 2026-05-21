@@ -2,7 +2,7 @@ import { formatCallDuration } from "@/lib/calls/format-call-duration";
 import type { CallRecord, LiveCall } from "@/lib/calls/types";
 import { phoneMatchKeys } from "@/lib/contacts/normalize-phone";
 import type { Contact } from "@/lib/contacts/types";
-import type { CallerRecord, CallTimelineEvent, RecentCall, ZohoLeadSnapshot } from "@/lib/types";
+import type { CallerRecord, CallNote, CallTimelineEvent, RecentCall, ZohoLeadSnapshot } from "@/lib/types";
 
 function formatDateLabel(value?: string | null) {
   if (!value) {
@@ -119,6 +119,53 @@ export function mapActiveCallToSnapshot(
     nextStep: "No live data",
     lastContacted: contact.lastInteraction || formatDateLabel("startedAt" in activeCall ? activeCall.startedAt : null),
   };
+}
+
+export function mapActiveCallToSpokenMessage(caller: CallerRecord | null) {
+  if (!caller) {
+    return null;
+  }
+
+  if (caller.recognized) {
+    return `Hi ${caller.name}. We found your record. Your current status is ${caller.leadStatus}. Please listen to the menu options for more help.`;
+  }
+
+  return "Thanks for calling Southwest Virginia Chihuahua. Please listen to the menu options for more help.";
+}
+
+export function mapDashboardCallNotes(
+  activeCall: CallRecord | LiveCall | null,
+  contacts: Contact[],
+  callNotes: CallNote[],
+): CallNote[] {
+  if (!activeCall) {
+    return callNotes;
+  }
+
+  const contact = findContactForPhone(contacts, activeCall.phone);
+  const notes = [...callNotes];
+
+  if (contact?.notes) {
+    notes.push({
+      id: `${contact.id}-contact-notes`,
+      author: "Contact Record",
+      timestamp: contact.lastInteraction || contact.added || "Saved contact note",
+      body: contact.notes,
+      followUpDate: "From contact record",
+    });
+  }
+
+  if ("notes" in activeCall && activeCall.notes) {
+    notes.push({
+      id: `${activeCall.id}-call-status-note`,
+      author: "Twilio",
+      timestamp: formatTime(activeCall.startedAt),
+      body: activeCall.notes,
+      followUpDate: "Call status note",
+    });
+  }
+
+  return notes.slice(0, 5);
 }
 
 export function mapCallsToRecentCalls(calls: CallRecord[]): RecentCall[] {

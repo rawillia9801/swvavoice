@@ -14,22 +14,23 @@ import { MessageTemplates } from "@/components/messages/message-templates";
 import { VoicemailInbox } from "@/components/voicemail/voicemail-inbox";
 import { requireAppSession } from "@/lib/auth";
 import { getCalls } from "@/lib/calls/get-calls";
+import { getCallNotes } from "@/lib/calls/get-call-notes";
 import { getLiveCall } from "@/lib/calls/get-live-call";
 import { getContacts } from "@/lib/contacts/get-contacts";
 import {
-  callNotes,
   messageTemplates,
   publicCallerMenu,
   quickActions,
   recognizedCallerMenu,
-  spokenMessage,
   voicemails,
 } from "@/lib/dashboard-data";
 import {
   getDashboardActiveCall,
   mapActiveCallToCaller,
   mapActiveCallToSnapshot,
+  mapActiveCallToSpokenMessage,
   mapActiveCallToTimeline,
+  mapDashboardCallNotes,
   mapCallsToRecentCalls,
 } from "@/lib/dashboard-live-data";
 
@@ -38,9 +39,15 @@ export default async function DashboardPage() {
   const [calls, liveCall, contacts] = await Promise.all([getCalls(), getLiveCall(), getContacts()]);
   const activeCall = getDashboardActiveCall(liveCall, calls);
   const activeCaller = mapActiveCallToCaller(activeCall, contacts);
+  const liveCallNotes = await getCallNotes({
+    callId: activeCall?.id || null,
+    phone: activeCall?.phone || null,
+  });
+  const callNotes = mapDashboardCallNotes(activeCall, contacts, liveCallNotes);
   const recentCalls = mapCallsToRecentCalls(calls);
   const callTimeline = mapActiveCallToTimeline(activeCall, contacts);
   const zohoLeadSnapshot = mapActiveCallToSnapshot(activeCall, contacts);
+  const spokenMessage = mapActiveCallToSpokenMessage(activeCaller);
 
   return (
     <main className="min-h-screen bg-[#f7f4ef] text-stone-900">
@@ -63,7 +70,7 @@ export default async function DashboardPage() {
                   <RecentCalls calls={recentCalls} />
                   <VoicemailInbox voicemails={voicemails} />
                   <MessageTemplates templates={messageTemplates} />
-                  <CallNotes notes={callNotes} />
+                  <CallNotes notes={callNotes} activeCaller={activeCaller} />
                 </div>
               </div>
 
@@ -71,7 +78,7 @@ export default async function DashboardPage() {
                 <ZohoRecordSnapshot record={zohoLeadSnapshot} />
                 <CallTimeline events={callTimeline} />
                 <TwilioVoicePanel />
-                <QuickActions actions={quickActions} />
+                <QuickActions actions={quickActions} activeCaller={activeCaller} />
               </aside>
             </div>
           </div>
