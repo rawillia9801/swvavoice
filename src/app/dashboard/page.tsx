@@ -60,7 +60,11 @@ export default async function DashboardPage() {
               <div className="min-w-0 space-y-2">
                 <div className="grid gap-4 lg:grid-cols-[460px_1fr]">
                   <ActiveCallCard caller={activeCaller} />
-                  <SpokenMessagePreview message={spokenMessage} />
+                  <SpokenMessagePreview
+                    message={spokenMessage}
+                    caller={activeCaller}
+                    record={zohoLeadSnapshot}
+                  />
                 </div>
                 <RecognizedCallerMenu
                   options={recognizedCallerMenu}

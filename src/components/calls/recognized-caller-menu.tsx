@@ -1,6 +1,9 @@
+"use client";
+
 import type { MenuOption } from "@/lib/types";
 import { getIcon } from "@/components/icons";
-import { Volume2 } from "lucide-react";
+import { ArrowRight, Volume2 } from "lucide-react";
+import { useMemo, useState } from "react";
 
 type RecognizedCallerMenuProps = {
   options: MenuOption[];
@@ -17,7 +20,24 @@ const accentClasses = [
   "from-orange-50 to-stone-50 text-orange-800 border-orange-100",
 ];
 
+const routeByOption: Record<string, string> = {
+  "Pickup / Delivery": "/pickups-delivery",
+  Balance: "/payments",
+  "Puppy Payment Info": "/payments",
+  "Reservation Details": "/customers",
+  "Application Status": "/customers",
+  "Leave a Message": "/voicemail",
+  "Speak With Someone": "/calls",
+};
+
 export function RecognizedCallerMenu({ options, publicOptions }: RecognizedCallerMenuProps) {
+  const [selectedKey, setSelectedKey] = useState(options[0]?.key || "");
+  const selected = useMemo(
+    () => options.find((option) => option.key === selectedKey) || options[0] || null,
+    [options, selectedKey],
+  );
+  const selectedRoute = selected ? routeByOption[selected.label] || "/calls" : "/calls";
+
   return (
     <section className="rounded-[10px] border border-[#eee7df] bg-white px-5 py-3 shadow-[0_16px_48px_rgba(68,58,45,0.05)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -36,21 +56,46 @@ export function RecognizedCallerMenu({ options, publicOptions }: RecognizedCalle
       <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
         {options.map((option, index) => {
           const Icon = getIcon(option.icon);
+          const active = selected?.key === option.key;
 
           return (
-            <div
+            <button
               key={option.key}
-              className={`h-[103px] rounded-[8px] border bg-gradient-to-br px-3 py-2 text-center shadow-sm ${accentClasses[index % accentClasses.length]}`}
+              type="button"
+              onClick={() => setSelectedKey(option.key)}
+              className={`h-[103px] rounded-[8px] border bg-gradient-to-br px-3 py-2 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+                active ? "ring-2 ring-[#00736d] ring-offset-2" : ""
+              } ${accentClasses[index % accentClasses.length]}`}
+              aria-pressed={active}
             >
               <div className="mx-auto grid size-9 place-items-center rounded-full bg-white/70 shadow-sm">
                 <Icon className="size-5" aria-hidden="true" />
               </div>
               <p className="mt-1 font-mono text-sm font-bold text-stone-950">{option.key}</p>
               <p className="mt-1 text-[12px] font-semibold leading-[15px] text-stone-950">{option.label}</p>
-            </div>
+            </button>
           );
         })}
       </div>
+
+      {selected ? (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[8px] border border-teal-100 bg-teal-50 px-3 py-2">
+          <div>
+            <p className="text-xs font-bold text-teal-900">
+              Press {selected.key}: {selected.label}
+            </p>
+            <p className="mt-1 text-xs text-teal-800">{selected.description}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => window.location.assign(selectedRoute)}
+            className="inline-flex items-center gap-2 rounded-md border border-teal-200 bg-white px-3 py-2 text-xs font-bold text-teal-800 shadow-sm hover:bg-teal-100"
+          >
+            Open Workspace
+            <ArrowRight className="size-3.5" aria-hidden="true" />
+          </button>
+        </div>
+      ) : null}
 
       <div className="mt-2 flex items-center gap-3 rounded-[8px] border border-[#e9e2da] bg-white px-3 py-1.5 shadow-sm">
         <div className="grid size-9 shrink-0 place-items-center rounded-md border border-stone-200 bg-stone-50 text-stone-600">
