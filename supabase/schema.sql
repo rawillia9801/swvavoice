@@ -201,6 +201,55 @@ create index if not exists call_notes_call_id_idx on public.call_notes (call_id)
 create index if not exists call_notes_phone_idx on public.call_notes (phone);
 create index if not exists call_notes_created_at_idx on public.call_notes (created_at desc);
 
+create table if not exists public.voicemail_status (
+  recording_sid text primary key
+);
+
+alter table public.voicemail_status add column if not exists call_id text;
+alter table public.voicemail_status add column if not exists phone text;
+alter table public.voicemail_status add column if not exists status text default 'unheard';
+alter table public.voicemail_status add column if not exists transcript text;
+alter table public.voicemail_status add column if not exists transcript_confidence numeric;
+alter table public.voicemail_status add column if not exists mailbox text;
+alter table public.voicemail_status add column if not exists archived boolean default false;
+alter table public.voicemail_status add column if not exists deleted boolean default false;
+alter table public.voicemail_status add column if not exists created_at timestamptz default now();
+alter table public.voicemail_status add column if not exists updated_at timestamptz default now();
+
+update public.voicemail_status set status = 'unheard' where status is null;
+update public.voicemail_status set archived = false where archived is null;
+update public.voicemail_status set deleted = false where deleted is null;
+update public.voicemail_status set created_at = now() where created_at is null;
+update public.voicemail_status set updated_at = now() where updated_at is null;
+
+alter table public.voicemail_status alter column status set not null;
+alter table public.voicemail_status alter column status set default 'unheard';
+alter table public.voicemail_status alter column archived set not null;
+alter table public.voicemail_status alter column archived set default false;
+alter table public.voicemail_status alter column deleted set not null;
+alter table public.voicemail_status alter column deleted set default false;
+alter table public.voicemail_status alter column created_at set not null;
+alter table public.voicemail_status alter column created_at set default now();
+alter table public.voicemail_status alter column updated_at set not null;
+alter table public.voicemail_status alter column updated_at set default now();
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'voicemail_status_status_check'
+  ) then
+    alter table public.voicemail_status
+      add constraint voicemail_status_status_check
+      check (status in ('new', 'unheard', 'heard', 'callback', 'follow-up', 'archived', 'failed'));
+  end if;
+end;
+$$;
+
+create index if not exists voicemail_status_phone_idx on public.voicemail_status (phone);
+create index if not exists voicemail_status_call_id_idx on public.voicemail_status (call_id);
+create index if not exists voicemail_status_status_idx on public.voicemail_status (status);
+create index if not exists voicemail_status_updated_at_idx on public.voicemail_status (updated_at desc);
+
 create or replace function public.set_updated_at()
 returns trigger as $$
 begin
@@ -217,4 +266,9 @@ for each row execute function public.set_updated_at();
 drop trigger if exists conversations_set_updated_at on public.conversations;
 create trigger conversations_set_updated_at
 before update on public.conversations
+for each row execute function public.set_updated_at();
+
+drop trigger if exists voicemail_status_set_updated_at on public.voicemail_status;
+create trigger voicemail_status_set_updated_at
+before update on public.voicemail_status
 for each row execute function public.set_updated_at();

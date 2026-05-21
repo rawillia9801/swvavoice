@@ -36,7 +36,8 @@ export function Sidebar() {
   const usesDarkSidebar =
     pathname.startsWith("/calls") ||
     pathname.startsWith("/contacts") ||
-    pathname.startsWith("/messages");
+    pathname.startsWith("/messages") ||
+    pathname.startsWith("/voicemail");
 
   return (
     <aside

@@ -1,13 +1,16 @@
-import { SectionPageShell } from "@/components/layout/section-page-shell";
+import { VoicemailWorkspace } from "@/components/voicemail/voicemail-workspace";
 import { requireAppSession } from "@/lib/auth";
+import {
+  getMailboxSummary,
+  getVoicemails,
+  getVoicemailStats,
+} from "@/lib/voicemail/get-voicemails";
 
 export default async function VoicemailPage() {
   await requireAppSession();
+  const voicemails = await getVoicemails();
+  const stats = getVoicemailStats(voicemails);
+  const mailbox = getMailboxSummary(voicemails);
 
-  return (
-    <SectionPageShell
-      title="Voicemail"
-      subtitle="Review caller voicemails and attach follow-up notes."
-    />
-  );
+  return <VoicemailWorkspace initialVoicemails={voicemails} stats={stats} mailbox={mailbox} />;
 }
