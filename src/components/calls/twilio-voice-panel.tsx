@@ -13,9 +13,12 @@ export function TwilioVoicePanel({ diagnostics: externalDiagnostics, onInitializ
   const diagnostics = externalDiagnostics ?? internalVoice.diagnostics;
   const initializeVoice = onInitialize ?? internalVoice.initialize;
   const ready = diagnostics.deviceStatus === "ready";
+  const callFailed = diagnostics.callState === "failed";
 
   const statusText = ready
-    ? `Voice SDK ready${diagnostics.identity ? ` as ${diagnostics.identity}` : ""}`
+    ? callFailed
+      ? `Device ready${diagnostics.identity ? ` as ${diagnostics.identity}` : ""}. Last call failed.`
+      : `Device ready${diagnostics.identity ? ` as ${diagnostics.identity}` : ""}.`
     : diagnostics.deviceStatus === "loading"
       ? "Requesting secure Twilio access token..."
       : diagnostics.lastError || "Twilio Voice SDK installed. Initialize to verify the real connection.";
@@ -57,11 +60,19 @@ export function TwilioVoicePanel({ diagnostics: externalDiagnostics, onInitializ
         <dd className="font-semibold text-stone-800">
           {diagnostics.accessTokenPresent ? "Present" : "Missing"}
         </dd>
-        <dt className="text-stone-500">Device status</dt>
+        <dt className="text-stone-500">Device connection</dt>
         <dd className="font-semibold text-stone-800">{diagnostics.deviceStatus}</dd>
-        <dt className="text-stone-500">Call state</dt>
-        <dd className="font-semibold text-stone-800">{diagnostics.callState}</dd>
+        <dt className="text-stone-500">Last call state</dt>
+        <dd className={`font-semibold ${callFailed ? "text-red-700" : "text-stone-800"}`}>
+          {diagnostics.callState}
+        </dd>
       </dl>
+
+      {diagnostics.lastError ? (
+        <div className="mt-3 rounded-md border border-red-100 bg-red-50 px-3 py-2 text-xs leading-5 text-red-800">
+          {diagnostics.lastError}
+        </div>
+      ) : null}
 
       {diagnostics.missing.length > 0 ? (
         <ul className="mt-3 space-y-1 text-xs text-stone-500">

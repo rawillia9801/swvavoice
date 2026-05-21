@@ -76,8 +76,10 @@ export function useTwilioVoice() {
         setLastError(
           "Browser Voice call ended before the destination rang. This usually means the TwiML App Voice Request URL is missing, unreachable, or not returning valid <Dial><Number> TwiML. Use the REST test button to verify Twilio can ring the number, then check the TwiML App URL.",
         );
+        setCallState("failed");
+      } else {
+        setCallState("ended");
       }
-      setCallState("ended");
       setMuted(false);
       setHeld(false);
     });
