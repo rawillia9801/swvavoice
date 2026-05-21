@@ -1,5 +1,7 @@
 import type { LiveCall } from "@/lib/calls/types";
+import { enrichLiveCallWithContacts } from "@/lib/calls/enrich-calls-with-contacts";
 import { mapTwilioCallToLiveCall } from "@/lib/calls/twilio-call-mapper";
+import { getContacts } from "@/lib/contacts/get-contacts";
 import { getTwilioRestClient } from "@/lib/twilio/server-client";
 
 export async function getLiveCall(): Promise<LiveCall | null> {
@@ -20,7 +22,9 @@ export async function getLiveCall(): Promise<LiveCall | null> {
       });
 
       if (calls[0]) {
-        return mapTwilioCallToLiveCall(calls[0]);
+        const contacts = await getContacts();
+
+        return enrichLiveCallWithContacts(mapTwilioCallToLiveCall(calls[0]), contacts);
       }
     }
 

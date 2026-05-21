@@ -1,4 +1,5 @@
 import type { CallAnalytics } from "@/lib/calls/types";
+import { mapTwilioCallToRecord } from "@/lib/calls/twilio-call-mapper";
 import { getTwilioRestClient } from "@/lib/twilio/server-client";
 
 export async function getCallAnalytics(): Promise<CallAnalytics> {
@@ -25,13 +26,14 @@ export async function getCallAnalytics(): Promise<CallAnalytics> {
       pageSize: 100,
     });
 
-    const answeredCalls = calls.filter((call) => call.status === "completed");
-    const missedCalls = calls.filter((call) =>
-      ["busy", "no-answer", "canceled", "failed"].includes(call.status),
+    const mappedCalls = calls.map(mapTwilioCallToRecord);
+    const answeredCalls = mappedCalls.filter((call) => call.status === "completed");
+    const missedCalls = mappedCalls.filter((call) =>
+      call.status === "missed" || call.status === "failed",
     );
     const durations = answeredCalls
-      .map((call) => Number.parseInt(call.duration || "", 10))
-      .filter((duration) => Number.isFinite(duration));
+      .map((call) => call.durationSeconds)
+      .filter((duration): duration is number => typeof duration === "number" && Number.isFinite(duration));
 
     return {
       totalCalls: calls.length,

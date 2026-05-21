@@ -60,7 +60,7 @@ export function CallsWorkspace({
         activeTab === "All Calls" ||
         (activeTab === "Inbound" && call.direction === "inbound") ||
         (activeTab === "Outbound" && call.direction === "outbound") ||
-        (activeTab === "Missed" && call.status === "missed") ||
+        (activeTab === "Missed" && (call.status === "missed" || call.status === "failed")) ||
         (activeTab === "Voicemails" && call.status === "voicemail");
 
       return matchesSearch && matchesTab;

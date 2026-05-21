@@ -28,7 +28,25 @@ export function mapTwilioDirection(direction?: string | null): CallDirection {
   return "unknown";
 }
 
-export function mapTwilioStatus(status?: string | null): CallStatus {
+function isShortBrowserVoiceAttempt(call: TwilioCallLike) {
+  const direction = call.direction || "";
+  const from = call.from || "";
+  const to = call.to || "";
+  const duration = getDurationSeconds(call);
+
+  return (
+    call.status === "completed" &&
+    duration != null &&
+    duration <= 5 &&
+    (direction === "outbound-dial" || from.startsWith("client:") || to.startsWith("client:"))
+  );
+}
+
+export function mapTwilioStatus(status?: string | null, call?: TwilioCallLike): CallStatus {
+  if (call && isShortBrowserVoiceAttempt(call)) {
+    return "failed";
+  }
+
   if (status === "queued" || status === "ringing" || status === "in-progress") {
     return "active";
   }
@@ -64,19 +82,23 @@ function getDurationSeconds(call: TwilioCallLike) {
 }
 
 export function mapTwilioCallToRecord(call: TwilioCallLike): CallRecord {
+  const shortBrowserAttempt = isShortBrowserVoiceAttempt(call);
+
   return {
     id: call.sid,
     callerName: call.callerName || null,
     phone: getDisplayPhone(call),
     recognitionStatus: "unknown",
     direction: mapTwilioDirection(call.direction),
-    status: mapTwilioStatus(call.status),
+    status: mapTwilioStatus(call.status, call),
     startedAt: call.startTime?.toISOString() || null,
     endedAt: call.endTime?.toISOString() || null,
     durationSeconds: getDurationSeconds(call),
     agentName: null,
     tags: [],
-    notes: null,
+    notes: shortBrowserAttempt
+      ? "Browser Voice SDK disconnected before the destination answered. Check the TwiML App Voice Request URL."
+      : null,
     zohoRecordId: null,
     zohoModule: null,
   };
